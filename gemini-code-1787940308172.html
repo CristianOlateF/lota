@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lota Tradicional Chilena (1-90)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+      background-color: #1a2228;
+      color: #fff;
+    }
+
+    .app-container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    /* COLUMNA IZQUIERDA: TABLERO (1 al 90) */
+    .col-izquierda {
+      flex: 3.5;
+      display: flex;
+      flex-direction: row;
+      gap: 0.8%;
+      justify-content: center;
+      background: #243038;
+      padding: 15px;
+      border-radius: 16px;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+    }
+
+    .columna-decena {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8%;
+      flex: 1;
+      height: 100%;
+    }
+
+    .casilla {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #344450;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1.3vw;
+      background-color: #e8c39e;
+      color: #5a2a0c;
+      transition: all 0.3s ease;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.15);
+    }
+
+    /* Casillas marcadas al salir el número */
+    .casilla.sorteado {
+      background-color: #2e7d32;
+      color: #ffffff;
+      border-color: #1b5e20;
+      transform: scale(1.05);
+      box-shadow: 0 0 12px rgba(46, 125, 50, 0.8);
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+
+    /* COLUMNA DERECHA: PANEL RANDOM Y FICHA */
+    .col-derecha {
+      flex: 1.2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      background: #243038;
+      padding: 25px 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      font-size: 2vw;
+      text-align: center;
+      color: #f4d3b2;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      letter-spacing: 1px;
+    }
+
+    /* --- ESTILOS DE LA FICHA DE MADERA --- */
+    .ficha-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 45%;
+    }
+
+    .ficha-madera {
+      width: 18vw;
+      height: 18vw;
+      max-width: 220px;
+      max-height: 220px;
+      border-radius: 50%;
+      border: 10px solid #a81c1c;
+      background: 
+        radial-gradient(circle, rgba(0,0,0,0) 50%, rgba(120, 60, 20, 0.25) 100%),
+        conic-gradient(from 45deg, #e8c39e, #f4d3b2, #dda876, #f4d3b2, #e8c39e);
+      box-shadow: 
+        inset 0 0 12px rgba(0,0,0,0.35),
+        inset 0 0 3px rgba(168, 28, 28, 0.8),
+        0 10px 25px rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      position: relative;
+    }
+
+    .ficha-madera::after {
+      content: '';
+      position: absolute;
+      width: calc(100% - 12px);
+      height: calc(100% - 12px);
+      border-radius: 50%;
+      border: 2px solid rgba(168, 28, 28, 0.3);
+      pointer-events: none;
+    }
+
+    .numero-rojo {
+      font-size: 5.5vw;
+      font-weight: 900;
+      color: #b71c1c;
+      text-shadow: 
+        1px 1px 0px rgba(255, 255, 255, 0.6),
+        -1px -1px 2px rgba(80, 0, 0, 0.5),
+        0px 2px 4px rgba(0, 0, 0, 0.3);
+      line-height: 1;
+    }
+
+    /* ANIMACIÓN DE LA FICHA */
+    .girando {
+      animation: girarFicha 0.85s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    @keyframes girarFicha {
+      0% {
+        transform: rotate(0deg) scale(0.75);
+      }
+      70% {
+        transform: rotate(1080deg) scale(1.15);
+      }
+      85% {
+        transform: rotate(1065deg) scale(0.95);
+      }
+      100% {
+        transform: rotate(1080deg) scale(1);
+      }
+    }
+
+    /* CONTROLES Y BOTONES */
+    .controles {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .panel-voz {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #1a2228;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #344450;
+    }
+
+    .opcion-voz {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9vw;
+      color: #f4d3b2;
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      background: #e8c39e;
+      color: #5a2a0c;
+      font-size: 0.85vw;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button {
+      padding: 14px;
+      font-size: 1.2vw;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(135deg, #c62828, #8e0000);
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #d32f2f, #9a0007);
+      box-shadow: 0 6px 18px rgba(198, 40, 40, 0.4);
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #btn-reset {
+      background: linear-gradient(135deg, #455a64, #263238);
+    }
+
+    #btn-reset:hover {
+      background: linear-gradient(135deg, #546e7a, #37474f);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- TABLERO A LA IZQUIERDA -->
+    <div class="col-izquierda" id="tablero"></div>
+
+    <!-- PANEL DERECHO CON FICHA Y CONTROLES -->
+    <div class="col-derecha">
+      <h1>LOTERÍA (1-90)</h1>
+
+      <div class="ficha-container">
+        <div class="ficha-madera" id="ficha">
+          <span class="numero-rojo" id="numero">?</span>
+        </div>
+      </div>
+      
+      <div class="controles">
+        <div class="panel-voz">
+          <label class="opcion-voz">
+            <input type="checkbox" id="chk-voz" checked>
+            <span>Activar Voz</span>
+          </label>
+          <select id="select-voces"></select>
+        </div>
+
+        <button id="btn-sacar" onclick="sacarFicha()">Girar Ficha</button>
+        <button id="btn-reset" onclick="reiniciarJuego()">Reiniciar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let numerosDisponibles = [];
+    let vocesDisponibles = [];
+
+    function cargarVoces() {
+      if (!('speechSynthesis' in window)) return;
+      
+      vocesDisponibles = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es'));
+      const select = document.getElementById('select-voces');
+      select.innerHTML = '';
+
+      if (vocesDisponibles.length === 0) {
+        const opt = document.createElement('option');
+        opt.innerText = 'Voz por defecto';
+        select.appendChild(opt);
+        return;
+      }
+
+      vocesDisponibles.forEach((voz, index) => {
+        const opt = document.createElement('option');
+        opt.value = index;
+        opt.innerText = `${voz.name} (${voz.lang})`;
+        if (voz.name.includes('Natural') || voz.name.includes('Google') || voz.name.includes('Neural')) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = cargarVoces;
+    }
+
+    function iniciarJuego() {
+      numerosDisponibles = Array.from({ length: 90 }, (_, i) => i + 1);
+      document.getElementById('numero').innerText = '?';
+      document.getElementById('btn-sacar').disabled = false;
+      
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      const tablero = document.getElementById('tablero');
+      tablero.innerHTML = '';
+
+      // Columna 1: Del 1 al 9
+      crearColumna(1, 9, tablero);
+
+      // Columnas intermedias: 10-19, 20-29... hasta 70-79
+      for (let inicio = 10; inicio <= 70; inicio += 10) {
+        crearColumna(inicio, inicio + 9, tablero);
+      }
+
+      // Última columna: del 80 al 90
+      crearColumna(80, 90, tablero);
+
+      cargarVoces();
+    }
+
+    function crearColumna(desde, hasta, contenedor) {
+      const colDiv = document.createElement('div');
+      colDiv.className = 'columna-decena';
+
+      for (let i = desde; i <= hasta; i++) {
+        const casilla = document.createElement('div');
+        casilla.className = 'casilla';
+        casilla.id = `num-${i}`;
+        casilla.innerText = i;
+        colDiv.appendChild(casilla);
+      }
+
+      contenedor.appendChild(colDiv);
+    }
+
+    function decirNumero(numero) {
+      const vozActivada = document.getElementById('chk-voz').checked;
+      if (!vozActivada || !('speechSynthesis' in window)) return;
+
+      window.speechSynthesis.cancel();
+
+      const mensaje = new SpeechSynthesisUtterance(numero.toString());
+      mensaje.rate = 0.85;
+
+      const select = document.getElementById('select-voces');
+      const indiceVoz = select.value;
+
+      if (vocesDisponibles[indiceVoz]) {
+        mensaje.voice = vocesDisponibles[indiceVoz];
+      } else {
+        mensaje.lang = 'es-ES';
+      }
+
+      window.speechSynthesis.speak(mensaje);
+    }
+
+    function sacarFicha() {
+      if (numerosDisponibles.length === 0) {
+        alert('¡Ya salieron todos los números!');
+        document.getElementById('btn-sacar').disabled = true;
+        return;
+      }
+
+      const ficha = document.getElementById('ficha');
+      const numeroTxt = document.getElementById('numero');
+      const boton = document.getElementById('btn-sacar');
+      
+      // Deshabilitar botón durante el giro
+      boton.disabled = true;
+      
+      // Reiniciar animación CSS
+      ficha.classList.remove('girando');
+      void ficha.offsetWidth; // Reflow
+      ficha.classList.add('girando');
+
+      // Obtener el número al azar
+      const indexAleatorio = Math.floor(Math.random() * numerosDisponibles.length);
+      const numero = numerosDisponibles.splice(indexAleatorio, 1)[0];
+
+      // Cambiar el número a mitad de la animación
+      setTimeout(() => {
+        numeroTxt.textContent = numero;
+
+        // Marcar casilla verde en el tablero
+        const casilla = document.getElementById(`num-${numero}`);
+        if (casilla) {
+          casilla.classList.add('sorteado');
+        }
+
+        // Cantar el número por voz
+        decirNumero(numero);
+      }, 350);
+
+      // Rehabilitar botón al finalizar el giro (850ms)
+      setTimeout(() => {
+        if (numerosDisponibles.length > 0) {
+          boton.disabled = false;
+        }
+      }, 850);
+    }
+
+    function reiniciarJuego() {
+      iniciarJuego();
+    }
+
+    iniciarJuego();
+  </script>
+
+</body>
+</html>
