@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lota Tradicional Chilena (1-90)</title>
+  <title>Lota Tradicional Chilena - TV & Remote</title>
+  
+  <!-- Carga de librerías para WebRTC y generación de Código QR -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -20,6 +25,7 @@
       color: #fff;
     }
 
+    /* MODO TV / PANTALLA PRINCIPAL */
     .app-container {
       display: flex;
       width: 100%;
@@ -28,7 +34,6 @@
       gap: 20px;
     }
 
-    /* COLUMNA IZQUIERDA: TABLERO (1 al 90) */
     .col-izquierda {
       flex: 3.5;
       display: flex;
@@ -64,7 +69,6 @@
       box-shadow: inset 0 0 5px rgba(0,0,0,0.15);
     }
 
-    /* Casillas marcadas al salir el número */
     .casilla.sorteado {
       background-color: #2e7d32;
       color: #ffffff;
@@ -74,7 +78,6 @@
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     }
 
-    /* COLUMNA DERECHA: PANEL RANDOM Y FICHA */
     .col-derecha {
       flex: 1.2;
       display: flex;
@@ -95,13 +98,12 @@
       letter-spacing: 1px;
     }
 
-    /* --- ESTILOS DE LA FICHA DE MADERA --- */
     .ficha-container {
       display: flex;
       align-items: center;
       justify-content: center;
       width: 100%;
-      height: 45%;
+      height: 40%;
     }
 
     .ficha-madera {
@@ -146,112 +148,91 @@
       line-height: 1;
     }
 
-    /* ANIMACIÓN DE LA FICHA */
     .girando {
       animation: girarFicha 0.85s cubic-bezier(0.25, 1, 0.5, 1);
     }
 
     @keyframes girarFicha {
-      0% {
-        transform: rotate(0deg) scale(0.75);
-      }
-      70% {
-        transform: rotate(1080deg) scale(1.15);
-      }
-      85% {
-        transform: rotate(1065deg) scale(0.95);
-      }
-      100% {
-        transform: rotate(1080deg) scale(1);
-      }
+      0% { transform: rotate(0deg) scale(0.75); }
+      70% { transform: rotate(1080deg) scale(1.15); }
+      85% { transform: rotate(1065deg) scale(0.95); }
+      100% { transform: rotate(1080deg) scale(1); }
     }
 
-    /* CONTROLES Y BOTONES */
-    .controles {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      width: 100%;
-    }
-
-    .panel-voz {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+    /* VISTA PANEL REMOTO EN EL TELÉFONO */
+    .qr-box {
       background: #1a2228;
-      padding: 10px;
-      border-radius: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
       border: 1px solid #344450;
     }
 
-    .opcion-voz {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9vw;
-      color: #f4d3b2;
-      cursor: pointer;
+    #qrcode img {
+      margin: 0 auto;
     }
 
-    select {
-      width: 100%;
-      padding: 8px;
-      border-radius: 6px;
-      border: none;
-      background: #e8c39e;
-      color: #5a2a0c;
-      font-size: 0.85vw;
+    .estado-remoto {
+      font-size: 0.8vw;
+      color: #4caf50;
       font-weight: bold;
-      cursor: pointer;
     }
 
-    button {
-      padding: 14px;
-      font-size: 1.2vw;
+    .remote-container {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 20px;
+      gap: 20px;
+      background: #1a2228;
+    }
+
+    .remote-container button {
+      width: 100%;
+      padding: 25px;
+      font-size: 1.8rem;
+      border-radius: 16px;
       font-weight: bold;
       color: #fff;
-      background: linear-gradient(135deg, #c62828, #8e0000);
       border: none;
-      border-radius: 30px;
-      cursor: pointer;
       box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-      transition: all 0.2s;
-      width: 100%;
+      cursor: pointer;
     }
 
-    button:hover {
-      background: linear-gradient(135deg, #d32f2f, #9a0007);
-      box-shadow: 0 6px 18px rgba(198, 40, 40, 0.4);
+    #btn-sacar-remoto {
+      background: linear-gradient(135deg, #c62828, #8e0000);
     }
 
-    button:active {
-      transform: scale(0.96);
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    #btn-reset {
+    #btn-reset-remoto {
       background: linear-gradient(135deg, #455a64, #263238);
     }
 
-    #btn-reset:hover {
-      background: linear-gradient(135deg, #546e7a, #37474f);
+    .status-badge {
+      padding: 8px 16px;
+      background: #243038;
+      border-radius: 20px;
+      color: #f4d3b2;
+      font-size: 1rem;
     }
+
+    /* Ocultar elementos según dispositivo */
+    body.is-remote .app-container { display: none !important; }
+    body.is-remote .remote-container { display: flex !important; }
   </style>
 </head>
 <body>
 
+  <!-- PANTALLA PRINCIPAL DE LA TV -->
   <div class="app-container">
-    <!-- TABLERO A LA IZQUIERDA -->
     <div class="col-izquierda" id="tablero"></div>
 
-    <!-- PANEL DERECHO CON FICHA Y CONTROLES -->
     <div class="col-derecha">
-      <h1>LOTA CHIILENA</h1>
+      <h1>LOTERÍA (1-90)</h1>
 
       <div class="ficha-container">
         <div class="ficha-madera" id="ficha">
@@ -259,48 +240,75 @@
         </div>
       </div>
       
-      <div class="controles">
-        <div class="panel-voz">
-          <label class="opcion-voz">
-            <input type="checkbox" id="chk-voz" checked>
-            <span>Activar Voz</span>
-          </label>
-          <select id="select-voces"></select>
-        </div>
-
-        <button id="btn-sacar" onclick="sacarFicha()">Girar Ficha</button>
-        <button id="btn-reset" onclick="reiniciarJuego()">Reiniciar</button>
+      <!-- Panel del código QR para sincronizar el Teléfono -->
+      <div class="qr-box">
+        <span style="font-size: 0.8vw; color: #f4d3b2;">Escanear con el Celular:</span>
+        <div id="qrcode"></div>
+        <span class="estado-remoto" id="estado-conexion">Esperando Control Remoto...</span>
       </div>
     </div>
+  </div>
+
+  <!-- PANTALLA DEL CONTROL REMOTO (SÓLO CELULAR) -->
+  <div class="remote-container">
+    <h2 style="color: #f4d3b2;">Control Remoto Lota</h2>
+    <div class="status-badge" id="remote-status">Conectando a la TV...</div>
+    <button id="btn-sacar-remoto" onclick="enviarAccion('GIRAR')">Girar Ficha 🎲</button>
+    <button id="btn-reset-remoto" onclick="enviarAccion('REINICIAR')">Reiniciar Juego 🔄</button>
   </div>
 
   <script>
     let numerosDisponibles = [];
     let vocesDisponibles = [];
+    let peer = null;
+    let conn = null;
+
+    // Detectar si la página se abre como Control Remoto mediante URL (?host=ID)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hostId = urlParams.get('host');
+
+    if (hostId) {
+      document.body.classList.add('is-remote');
+      iniciarModoRemoto(hostId);
+    } else {
+      iniciarModoTV();
+    }
+
+    /* --- LÓGICA DE LA PANTALLA DE LA TV --- */
+    function iniciarModoTV() {
+      iniciarJuego();
+      
+      // Inicializar PeerJS como Servidor/Receptor
+      peer = new Peer();
+
+      peer.on('open', (id) => {
+        const urlControl = `${window.location.href.split('?')[0]}?host=${id}`;
+        document.getElementById('qrcode').innerHTML = "";
+        new QRCode(document.getElementById("qrcode"), {
+          text: urlControl,
+          width: 110,
+          height: 110
+        });
+      });
+
+      peer.on('connection', (c) => {
+        conn = c;
+        document.getElementById('estado-conexion').innerText = "¡Control Remoto Conectado!";
+        document.getElementById('estado-conexion').style.color = "#81c784";
+
+        conn.on('data', (data) => {
+          if (data === 'GIRAR') {
+            sacarFicha();
+          } else if (data === 'REINICIAR') {
+            reiniciarJuego();
+          }
+        });
+      });
+    }
 
     function cargarVoces() {
       if (!('speechSynthesis' in window)) return;
-      
       vocesDisponibles = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es'));
-      const select = document.getElementById('select-voces');
-      select.innerHTML = '';
-
-      if (vocesDisponibles.length === 0) {
-        const opt = document.createElement('option');
-        opt.innerText = 'Voz por defecto';
-        select.appendChild(opt);
-        return;
-      }
-
-      vocesDisponibles.forEach((voz, index) => {
-        const opt = document.createElement('option');
-        opt.value = index;
-        opt.innerText = `${voz.name} (${voz.lang})`;
-        if (voz.name.includes('Natural') || voz.name.includes('Google') || voz.name.includes('Neural')) {
-          opt.selected = true;
-        }
-        select.appendChild(opt);
-      });
     }
 
     if ('speechSynthesis' in window) {
@@ -310,24 +318,16 @@
     function iniciarJuego() {
       numerosDisponibles = Array.from({ length: 90 }, (_, i) => i + 1);
       document.getElementById('numero').innerText = '?';
-      document.getElementById('btn-sacar').disabled = false;
       
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
       const tablero = document.getElementById('tablero');
       tablero.innerHTML = '';
 
-      // Columna 1: Del 1 al 9
       crearColumna(1, 9, tablero);
-
-      // Columnas intermedias: 10-19, 20-29... hasta 70-79
       for (let inicio = 10; inicio <= 70; inicio += 10) {
         crearColumna(inicio, inicio + 9, tablero);
       }
-
-      // Última columna: del 80 al 90
       crearColumna(80, 90, tablero);
 
       cargarVoces();
@@ -344,24 +344,19 @@
         casilla.innerText = i;
         colDiv.appendChild(casilla);
       }
-
       contenedor.appendChild(colDiv);
     }
 
     function decirNumero(numero) {
-      const vozActivada = document.getElementById('chk-voz').checked;
-      if (!vozActivada || !('speechSynthesis' in window)) return;
-
+      if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
 
       const mensaje = new SpeechSynthesisUtterance(numero.toString());
       mensaje.rate = 0.85;
 
-      const select = document.getElementById('select-voces');
-      const indiceVoz = select.value;
-
-      if (vocesDisponibles[indiceVoz]) {
-        mensaje.voice = vocesDisponibles[indiceVoz];
+      if (vocesDisponibles.length > 0) {
+        const vozPreferida = vocesDisponibles.find(v => v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural'));
+        mensaje.voice = vozPreferida || vocesDisponibles[0];
       } else {
         mensaje.lang = 'es-ES';
       }
@@ -371,55 +366,58 @@
 
     function sacarFicha() {
       if (numerosDisponibles.length === 0) {
-        alert('¡Ya salieron todos los números!');
-        document.getElementById('btn-sacar').disabled = true;
+        if (conn) conn.send('FIN');
         return;
       }
 
       const ficha = document.getElementById('ficha');
       const numeroTxt = document.getElementById('numero');
-      const boton = document.getElementById('btn-sacar');
       
-      // Deshabilitar botón durante el giro
-      boton.disabled = true;
-      
-      // Reiniciar animación CSS
       ficha.classList.remove('girando');
-      void ficha.offsetWidth; // Reflow
+      void ficha.offsetWidth;
       ficha.classList.add('girando');
 
-      // Obtener el número al azar
       const indexAleatorio = Math.floor(Math.random() * numerosDisponibles.length);
       const numero = numerosDisponibles.splice(indexAleatorio, 1)[0];
 
-      // Cambiar el número a mitad de la animación
       setTimeout(() => {
         numeroTxt.textContent = numero;
-
-        // Marcar casilla verde en el tablero
         const casilla = document.getElementById(`num-${numero}`);
-        if (casilla) {
-          casilla.classList.add('sorteado');
-        }
-
-        // Cantar el número por voz
+        if (casilla) casilla.classList.add('sorteado');
         decirNumero(numero);
       }, 350);
-
-      // Rehabilitar botón al finalizar el giro (850ms)
-      setTimeout(() => {
-        if (numerosDisponibles.length > 0) {
-          boton.disabled = false;
-        }
-      }, 850);
     }
 
     function reiniciarJuego() {
       iniciarJuego();
     }
 
-    iniciarJuego();
-  </script>
+    /* --- LÓGICA DEL CONTROL REMOTO (CELULAR) --- */
+    function iniciarModoRemoto(targetId) {
+      peer = new Peer();
 
+      peer.on('open', () => {
+        conn = peer.connect(targetId);
+
+        conn.on('open', () => {
+          document.getElementById('remote-status').innerText = "🟢 Conectado a la TV";
+          document.getElementById('remote-status').style.color = "#81c784";
+        });
+
+        conn.on('close', () => {
+          document.getElementById('remote-status').innerText = "🔴 Desconectado";
+          document.getElementById('remote-status').style.color = "#e57373";
+        });
+      });
+    }
+
+    function enviarAccion(accion) {
+      if (conn && conn.open) {
+        conn.send(accion);
+      } else {
+        alert("Sin conexión con la TV.");
+      }
+    }
+  </script>
 </body>
 </html>
