@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lota Tradicional Chilena - TV & Remote</title>
   
-  <!-- Carga de librerías para WebRTC y generación de Código QR -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -25,7 +24,35 @@
       color: #fff;
     }
 
-    /* MODO TV / PANTALLA PRINCIPAL */
+    /* PANTALLA DE ACTIVACIÓN DE AUDIO */
+    #overlay-audio {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(26, 34, 40, 0.95);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+    }
+
+    #btn-activar-audio {
+      padding: 20px 40px;
+      font-size: 2rem;
+      background: #2e7d32;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(46, 125, 50, 0.6);
+      font-weight: bold;
+    }
+
+    /* MODO TV */
     .app-container {
       display: flex;
       width: 100%;
@@ -159,7 +186,6 @@
       100% { transform: rotate(1080deg) scale(1); }
     }
 
-    /* VISTA PANEL REMOTO EN EL TELÉFONO */
     .qr-box {
       background: #1a2228;
       padding: 12px;
@@ -181,6 +207,7 @@
       font-weight: bold;
     }
 
+    /* CONTROL REMOTO */
     .remote-container {
       display: none;
       flex-direction: column;
@@ -220,12 +247,18 @@
       font-size: 1rem;
     }
 
-    /* Ocultar elementos según dispositivo */
-    body.is-remote .app-container { display: none !important; }
+    body.is-remote .app-container, body.is-remote #overlay-audio { display: none !important; }
     body.is-remote .remote-container { display: flex !important; }
   </style>
 </head>
 <body>
+
+  <!-- PANTALLA INICIAL DE PERMISO DE AUDIO PARA LA TV -->
+  <div id="overlay-audio">
+    <h1 style="color: #f4d3b2; font-size: 2.5rem;">Lota Tradicional Chilena</h1>
+    <p style="color: #aaa; font-size: 1.2rem;">Presiona el botón para activar el sonido y la transmisión en TV</p>
+    <button id="btn-activar-audio" onclick="activarAudioTV()">🔊 Activar Sonido e Iniciar</button>
+  </div>
 
   <!-- PANTALLA PRINCIPAL DE LA TV -->
   <div class="app-container">
@@ -240,16 +273,15 @@
         </div>
       </div>
       
-      <!-- Panel del código QR para sincronizar el Teléfono -->
       <div class="qr-box">
         <span style="font-size: 0.8vw; color: #f4d3b2;">Escanear con el Celular:</span>
         <div id="qrcode"></div>
-        <span class="estado-remoto" id="estado-conexion">Esperando Control Remoto...</span>
+        <span class="estado-remoto" id="estado-conexion">Esperando Control...</span>
       </div>
     </div>
   </div>
 
-  <!-- PANTALLA DEL CONTROL REMOTO (SÓLO CELULAR) -->
+  <!-- PANTALLA DEL CONTROL REMOTO (CELULAR) -->
   <div class="remote-container">
     <h2 style="color: #f4d3b2;">Control Remoto Lota</h2>
     <div class="status-badge" id="remote-status">Conectando a la TV...</div>
@@ -262,23 +294,37 @@
     let vocesDisponibles = [];
     let peer = null;
     let conn = null;
+    let audioContext = null;
 
-    // Detectar si la página se abre como Control Remoto mediante URL (?host=ID)
     const urlParams = new URLSearchParams(window.location.search);
     const hostId = urlParams.get('host');
 
     if (hostId) {
       document.body.classList.add('is-remote');
       iniciarModoRemoto(hostId);
-    } else {
+    }
+
+    function activarAudioTV() {
+      // 1. Inicializar Audio Context para desbloquear reproducción de sonido en el navegador
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // 2. Probar y cargar el motor de voz
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.resume();
+        const testUtterance = new SpeechSynthesisUtterance('');
+        window.speechSynthesis.speak(testUtterance);
+      }
+
+      // 3. Ocultar el overlay
+      document.getElementById('overlay-audio').style.display = 'none';
+
+      // 4. Iniciar la TV
       iniciarModoTV();
     }
 
-    /* --- LÓGICA DE LA PANTALLA DE LA TV --- */
     function iniciarModoTV() {
       iniciarJuego();
       
-      // Inicializar PeerJS como Servidor/Receptor
       peer = new Peer();
 
       peer.on('open', (id) => {
@@ -293,7 +339,7 @@
 
       peer.on('connection', (c) => {
         conn = c;
-        document.getElementById('estado-conexion').innerText = "¡Control Remoto Conectado!";
+        document.getElementById('estado-conexion').innerText = "¡Control Conectado!";
         document.getElementById('estado-conexion').style.color = "#81c784";
 
         conn.on('data', (data) => {
@@ -313,6 +359,7 @@
 
     if ('speechSynthesis' in window) {
       window.speechSynthesis.onvoiceschanged = cargarVoces;
+      cargarVoces();
     }
 
     function iniciarJuego() {
@@ -348,27 +395,32 @@
     }
 
     function decirNumero(numero) {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
 
-      const mensaje = new SpeechSynthesisUtterance(numero.toString());
-      mensaje.rate = 0.85;
+        const mensaje = new SpeechSynthesisUtterance(`Número ${numero}`);
+        mensaje.rate = 0.85;
 
-      if (vocesDisponibles.length > 0) {
-        const vozPreferida = vocesDisponibles.find(v => v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural'));
-        mensaje.voice = vozPreferida || vocesDisponibles[0];
-      } else {
-        mensaje.lang = 'es-ES';
+        if (vocesDisponibles.length > 0) {
+          const vozPreferida = vocesDisponibles.find(v => 
+            v.name.includes('Natural') || 
+            v.name.includes('Google') || 
+            v.name.includes('Neural') ||
+            v.lang.includes('es-CL') ||
+            v.lang.includes('es-ES')
+          );
+          mensaje.voice = vozPreferida || vocesDisponibles[0];
+        } else {
+          mensaje.lang = 'es-ES';
+        }
+
+        window.speechSynthesis.speak(mensaje);
       }
-
-      window.speechSynthesis.speak(mensaje);
     }
 
     function sacarFicha() {
-      if (numerosDisponibles.length === 0) {
-        if (conn) conn.send('FIN');
-        return;
-      }
+      if (numerosDisponibles.length === 0) return;
 
       const ficha = document.getElementById('ficha');
       const numeroTxt = document.getElementById('numero');
@@ -384,6 +436,8 @@
         numeroTxt.textContent = numero;
         const casilla = document.getElementById(`num-${numero}`);
         if (casilla) casilla.classList.add('sorteado');
+        
+        // Cantar el número por los parlantes de la TV
         decirNumero(numero);
       }, 350);
     }
@@ -392,7 +446,7 @@
       iniciarJuego();
     }
 
-    /* --- LÓGICA DEL CONTROL REMOTO (CELULAR) --- */
+    /* CONTROL REMOTO */
     function iniciarModoRemoto(targetId) {
       peer = new Peer();
 
