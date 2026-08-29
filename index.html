@@ -112,7 +112,7 @@
       align-items: center;
       justify-content: space-between;
       background: #243038;
-      padding: 25px 20px;
+      padding: 20px 15px;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
@@ -130,14 +130,14 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      height: 40%;
+      height: 35%;
     }
 
     .ficha-madera {
-      width: 18vw;
-      height: 18vw;
-      max-width: 220px;
-      max-height: 220px;
+      width: 16vw;
+      height: 16vw;
+      max-width: 200px;
+      max-height: 200px;
       border-radius: 50%;
       border: 10px solid #a81c1c;
       background: 
@@ -165,7 +165,7 @@
     }
 
     .numero-rojo {
-      font-size: 5.5vw;
+      font-size: 5vw;
       font-weight: 900;
       color: #b71c1c;
       text-shadow: 
@@ -186,15 +186,49 @@
       100% { transform: rotate(1080deg) scale(1); }
     }
 
+    /* CONTROLES DE VOZ EN LA TV */
+    .panel-voz {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #1a2228;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #344450;
+      width: 100%;
+    }
+
+    .opcion-voz {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85vw;
+      color: #f4d3b2;
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      padding: 6px;
+      border-radius: 6px;
+      border: none;
+      background: #e8c39e;
+      color: #5a2a0c;
+      font-size: 0.8vw;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
     .qr-box {
       background: #1a2228;
-      padding: 12px;
+      padding: 8px;
       border-radius: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       border: 1px solid #344450;
+      width: 100%;
     }
 
     #qrcode img {
@@ -202,12 +236,12 @@
     }
 
     .estado-remoto {
-      font-size: 0.8vw;
-      color: #4caf50;
+      font-size: 0.75vw;
+      color: #ffca28;
       font-weight: bold;
     }
 
-    /* CONTROL REMOTO */
+    /* CONTROL REMOTO (CELULAR) */
     .remote-container {
       display: none;
       flex-direction: column;
@@ -215,14 +249,14 @@
       align-items: center;
       height: 100vh;
       padding: 20px;
-      gap: 20px;
+      gap: 15px;
       background: #1a2228;
     }
 
     .remote-container button {
       width: 100%;
-      padding: 25px;
-      font-size: 1.8rem;
+      padding: 22px;
+      font-size: 1.6rem;
       border-radius: 16px;
       font-weight: bold;
       color: #fff;
@@ -233,6 +267,10 @@
 
     #btn-sacar-remoto {
       background: linear-gradient(135deg, #c62828, #8e0000);
+    }
+
+    #btn-voz-remoto {
+      background: linear-gradient(135deg, #2e7d32, #1b5e20);
     }
 
     #btn-reset-remoto {
@@ -272,11 +310,21 @@
           <span class="numero-rojo" id="numero">?</span>
         </div>
       </div>
+
+      <!-- PANEL DE CONTROL DE VOZ -->
+      <div class="panel-voz">
+        <label class="opcion-voz">
+          <input type="checkbox" id="chk-voz" checked>
+          <span>Activar Voz</span>
+        </label>
+        <select id="select-voces"></select>
+      </div>
       
+      <!-- CÓDIGO QR -->
       <div class="qr-box">
-        <span style="font-size: 0.8vw; color: #f4d3b2;">Escanear con el Celular:</span>
+        <span style="font-size: 0.75vw; color: #f4d3b2;">Escanear con el Celular:</span>
         <div id="qrcode"></div>
-        <span class="estado-remoto" id="estado-conexion">Esperando Control...</span>
+        <span class="estado-remoto" id="estado-conexion">Generando QR...</span>
       </div>
     </div>
   </div>
@@ -286,6 +334,7 @@
     <h2 style="color: #f4d3b2;">Control Remoto Lota</h2>
     <div class="status-badge" id="remote-status">Conectando a la TV...</div>
     <button id="btn-sacar-remoto" onclick="enviarAccion('GIRAR')">Girar Ficha 🎲</button>
+    <button id="btn-voz-remoto" onclick="enviarAccion('TOGGLE_VOZ')">Voz: Activada 🔊</button>
     <button id="btn-reset-remoto" onclick="enviarAccion('REINICIAR')">Reiniciar Juego 🔄</button>
   </div>
 
@@ -294,7 +343,15 @@
     let vocesDisponibles = [];
     let peer = null;
     let conn = null;
-    let audioContext = null;
+
+    const peerConfig = {
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+      }
+    };
 
     const urlParams = new URLSearchParams(window.location.search);
     const hostId = urlParams.get('host');
@@ -305,36 +362,30 @@
     }
 
     function activarAudioTV() {
-      // 1. Inicializar Audio Context para desbloquear reproducción de sonido en el navegador
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
-      // 2. Probar y cargar el motor de voz
       if ('speechSynthesis' in window) {
         window.speechSynthesis.resume();
-        const testUtterance = new SpeechSynthesisUtterance('');
+        const testUtterance = new SpeechSynthesisUtterance(' ');
         window.speechSynthesis.speak(testUtterance);
       }
 
-      // 3. Ocultar el overlay
       document.getElementById('overlay-audio').style.display = 'none';
-
-      // 4. Iniciar la TV
       iniciarModoTV();
     }
 
     function iniciarModoTV() {
       iniciarJuego();
       
-      peer = new Peer();
+      peer = new Peer(peerConfig);
 
       peer.on('open', (id) => {
-        const urlControl = `${window.location.href.split('?')[0]}?host=${id}`;
+        const urlControl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?host=${id}`;
         document.getElementById('qrcode').innerHTML = "";
         new QRCode(document.getElementById("qrcode"), {
           text: urlControl,
-          width: 110,
-          height: 110
+          width: 90,
+          height: 90
         });
+        document.getElementById('estado-conexion').innerText = "Esperando Control Remoto...";
       });
 
       peer.on('connection', (c) => {
@@ -347,7 +398,16 @@
             sacarFicha();
           } else if (data === 'REINICIAR') {
             reiniciarJuego();
+          } else if (data === 'TOGGLE_VOZ') {
+            const chk = document.getElementById('chk-voz');
+            chk.checked = !chk.checked;
+            conn.send(chk.checked ? 'VOZ_ON' : 'VOZ_OFF');
           }
+        });
+
+        conn.on('close', () => {
+          document.getElementById('estado-conexion').innerText = "Control Desconectado";
+          document.getElementById('estado-conexion').style.color = "#e57373";
         });
       });
     }
@@ -355,6 +415,26 @@
     function cargarVoces() {
       if (!('speechSynthesis' in window)) return;
       vocesDisponibles = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es'));
+      
+      const select = document.getElementById('select-voces');
+      select.innerHTML = '';
+
+      if (vocesDisponibles.length === 0) {
+        const opt = document.createElement('option');
+        opt.innerText = 'Voz por defecto';
+        select.appendChild(opt);
+        return;
+      }
+
+      vocesDisponibles.forEach((voz, index) => {
+        const opt = document.createElement('option');
+        opt.value = index;
+        opt.innerText = `${voz.name} (${voz.lang})`;
+        if (voz.name.includes('Natural') || voz.name.includes('Google') || voz.name.includes('Neural')) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
     }
 
     if ('speechSynthesis' in window) {
@@ -395,28 +475,25 @@
     }
 
     function decirNumero(numero) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.resume();
+      const vozActivada = document.getElementById('chk-voz').checked;
+      if (!vozActivada || !('speechSynthesis' in window)) return;
 
-        const mensaje = new SpeechSynthesisUtterance(`Número ${numero}`);
-        mensaje.rate = 0.85;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.resume();
 
-        if (vocesDisponibles.length > 0) {
-          const vozPreferida = vocesDisponibles.find(v => 
-            v.name.includes('Natural') || 
-            v.name.includes('Google') || 
-            v.name.includes('Neural') ||
-            v.lang.includes('es-CL') ||
-            v.lang.includes('es-ES')
-          );
-          mensaje.voice = vozPreferida || vocesDisponibles[0];
-        } else {
-          mensaje.lang = 'es-ES';
-        }
+      const mensaje = new SpeechSynthesisUtterance(`Número ${numero}`);
+      mensaje.rate = 0.85;
 
-        window.speechSynthesis.speak(mensaje);
+      const select = document.getElementById('select-voces');
+      const indiceVoz = select.value;
+
+      if (vocesDisponibles[indiceVoz]) {
+        mensaje.voice = vocesDisponibles[indiceVoz];
+      } else {
+        mensaje.lang = 'es-ES';
       }
+
+      window.speechSynthesis.speak(mensaje);
     }
 
     function sacarFicha() {
@@ -436,8 +513,6 @@
         numeroTxt.textContent = numero;
         const casilla = document.getElementById(`num-${numero}`);
         if (casilla) casilla.classList.add('sorteado');
-        
-        // Cantar el número por los parlantes de la TV
         decirNumero(numero);
       }, 350);
     }
@@ -446,9 +521,9 @@
       iniciarJuego();
     }
 
-    /* CONTROL REMOTO */
+    /* CONTROL REMOTO (CELULAR) */
     function iniciarModoRemoto(targetId) {
-      peer = new Peer();
+      peer = new Peer(peerConfig);
 
       peer.on('open', () => {
         conn = peer.connect(targetId);
@@ -456,6 +531,17 @@
         conn.on('open', () => {
           document.getElementById('remote-status').innerText = "🟢 Conectado a la TV";
           document.getElementById('remote-status').style.color = "#81c784";
+        });
+
+        conn.on('data', (data) => {
+          const btnVoz = document.getElementById('btn-voz-remoto');
+          if (data === 'VOZ_ON') {
+            btnVoz.innerText = "Voz: Activada 🔊";
+            btnVoz.style.background = "linear-gradient(135deg, #2e7d32, #1b5e20)";
+          } else if (data === 'VOZ_OFF') {
+            btnVoz.innerText = "Voz: Silenciada 🔇";
+            btnVoz.style.background = "linear-gradient(135deg, #757575, #424242)";
+          }
         });
 
         conn.on('close', () => {
